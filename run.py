@@ -63,7 +63,7 @@ async def main(server_settings):
 
             # least task scheduled worker
             thread = next(iter(sorted(threads, key=lambda t: t.task_count)))
-            thread.queue.sync_q.put(message, block=False)
+            asyncio.run_coroutine_threadsafe(thread.queue.put(message), loop=thread.loop)
         except Exception as e:
             logger.exception("Failed while putting message to queue <{}>".format(str(e)))
 

@@ -30,11 +30,11 @@ class WorkerThread(threading.Thread):
         return len(asyncio.all_tasks(loop=self.loop))
 
     async def _run(self):
-        self.queue = TaskQueue()
         self.loop = asyncio.get_event_loop()
+        self.queue = TaskQueue(loop=self.loop)
         self.loop.set_exception_handler(worker_thread_exception_handler)
 
-        async for item in self.queue.async_q:
+        async for item in self.queue:
             try:
                 task = TASK_MAPPING.get(item["task_name"])
                 if not all([task, isinstance(item["task_parameters"], dict)]):
@@ -42,8 +42,9 @@ class WorkerThread(threading.Thread):
 
                 asyncio.ensure_future(task(**item["task_parameters"]))
                 asyncio.run_coroutine_threadsafe(self.consumer.commit(), loop=self.main_event_loop)
-                self.queue.async_q.task_done()
+                self.queue.task_done()
             except CustomError as e:
                 logger.info("Task not runnable id: {}".format(item["id"]))
             except Exception as e:
                 logger.exception("Task not scheduled unexpectedly id:{} <{}>".format(item["id"], str(e)))
+

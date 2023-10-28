@@ -21,7 +21,6 @@ This is a example for consuming and processing data from kafka also know as data
 ## Packages
 * uvloop ~ fast asyncio event loop
 * aiokafka ~ asynchronous kafka client
-* janus ~ thread aware task queue // a little changes check queue.py
 
 # task payload example
 ```json
