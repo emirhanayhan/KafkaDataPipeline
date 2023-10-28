@@ -41,10 +41,8 @@ class WorkerThread(threading.Thread):
                     raise CustomError("Task not runnable")
 
                 asyncio.ensure_future(task(**item["task_parameters"]))
-                asyncio.run_coroutine_threadsafe(self.consumer.commit(), loop=self.main_event_loop)
                 self.queue.task_done()
             except CustomError as e:
                 logger.info("Task not runnable id: {}".format(item["id"]))
             except Exception as e:
                 logger.exception("Task not scheduled unexpectedly id:{} <{}>".format(item["id"], str(e)))
-

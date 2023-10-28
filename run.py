@@ -9,6 +9,7 @@ import multiprocessing as mp
 
 import uvloop
 from aiokafka import AIOKafkaConsumer
+from kafka.errors import KafkaConnectionError, CommitFailedError
 
 from configs.local import local_config
 from configs.prod import prod_config
@@ -42,7 +43,7 @@ async def main(server_settings):
         enable_auto_commit=False,
         max_poll_interval_ms=600000,
         heartbeat_interval_ms=6000,
-        max_poll_records=250,
+        max_poll_records=1000,
         auto_offset_reset='earliest',
         group_id=server_settings["group_id"])
 
@@ -60,12 +61,16 @@ async def main(server_settings):
         try:
             message = json.loads(msg.value)
             message['id'] = uuid.uuid4().hex
-
             # least task scheduled worker
             thread = next(iter(sorted(threads, key=lambda t: t.task_count)))
             asyncio.run_coroutine_threadsafe(thread.queue.put(message), loop=thread.loop)
+            await consumer.commit()
+        except (KafkaConnectionError, CommitFailedError) as e:
+            logger.exception("Connection error <{}>".format(str(e)))
         except Exception as e:
             logger.exception("Failed while putting message to queue <{}>".format(str(e)))
+        finally:
+            await consumer.stop()
 
 
 parser = optparse.OptionParser()
