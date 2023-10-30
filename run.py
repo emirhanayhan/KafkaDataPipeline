@@ -35,6 +35,7 @@ async def main(server_settings):
     loop = asyncio.get_event_loop()
     loop.set_exception_handler(main_thread_exception_handler)
     threads = []
+    # TODO monitor and consider manual partition assignment
     consumer = AIOKafkaConsumer(
         server_settings["topic_name"],
         bootstrap_servers=server_settings["kafka_host"],
@@ -69,8 +70,7 @@ async def main(server_settings):
             logger.exception("Connection error <{}>".format(str(e)))
         except Exception as e:
             logger.exception("Failed while putting message to queue <{}>".format(str(e)))
-        finally:
-            await consumer.stop()
+    await consumer.stop()
 
 
 parser = optparse.OptionParser()
@@ -79,7 +79,9 @@ options, _ = parser.parse_args()
 settings = CONFIG_MAPPING[options.config]
 
 
-def start_event_loop(settings):
+def init_process(settings):
+    # initialize event loop with uvloop event policy
+    # and start consuming process and worker threads
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
     asyncio.run(main(settings))
 
@@ -91,7 +93,7 @@ if __name__ == '__main__':
     partitions_count = settings["partitions_count"]
     for _ in range(partitions_count):
         process = mp.Process(
-            target=start_event_loop,
+            target=init_process,
             args=[settings],
             name="ConsumerProcess-{}".format(_)
         )
